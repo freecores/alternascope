@@ -1,14 +1,33 @@
-//==================================================================
-// File:    d_VGAdriver.v
-// Version: 0.01
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// Copyright Stephen Pickett
-//   April 28, 2005
-//------------------------------------------------------------------
-// Revisions:
-// Ver 0.01     Apr 28, 2005    Initial Release
-//
-//==================================================================
+//==================================================================//
+// File:    d_VGAdriver.v                                           //
+// Version: 0.0.0.2                                                 //
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -//
+// Copyright (C) Stephen Pickett                                    //
+//   Jun 09, 2005                                                   //
+//                                                                  //
+// This program is free software; you can redistribute it and/or    //
+// modify it under the terms of the GNU General Public License      //
+// as published by the Free Software Foundation; either version 2   //
+// of the License, or (at your option) any later version.           //
+//                                                                  //
+// This program is distributed in the hope that it will be useful,  //
+// but WITHOUT ANY WARRANTY; without even the implied warranty of   //
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the    //
+// GNU General Public License for more details.                     //
+//                                                                  //
+// If you have not received a copy of the GNU General Public License//
+// along with this program; write to:                               //
+//     Free Software Foundation, Inc.,                              //
+//     51 Franklin Street, Fifth Floor,                             //
+//     Boston, MA  02110-1301, USA.                                 //
+//                                                                  //
+//------------------------------------------------------------------//
+// Revisions:                                                       //
+// Ver 0.0.0.1     Apr 28, 2005   Under Development                 //
+//     0.0.0.2     Jun 09, 2005   Cleaning                          //
+//                                                                  //
+//==================================================================//
+
 module Driver_VGA(
     CLK_50MHZ, MASTER_RST,
     VGA_RAM_DATA, VGA_RAM_ADDR,
@@ -149,9 +168,9 @@ always @ (hcnt or vcnt or XCOORD or YCOORD or MASTER_RST or vga_out or SHOW_LEVE
     // TRIGGER SPRITE         (shows as ------T------ )                             //
     end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL+10'd31) && hcnt != 10'd700 && hcnt != 10'd702) begin
         VGA_OUTPUT = P_yellow;
-    end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL+1'b1+10'd31) && hcnt >= 10'd700 && hcnt <= 10'd702) begin
+    end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL-1'b1+10'd31) && hcnt >= 10'd700 && hcnt <= 10'd702) begin
         VGA_OUTPUT = P_yellow;
-    end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL-1'b1+10'd31) && hcnt == 10'd701) begin
+    end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL+1'b1+10'd31) && hcnt == 10'd701) begin
         VGA_OUTPUT = P_yellow;
 ///*
     //------------------------------------------------------------------------------//
