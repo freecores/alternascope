@@ -14,7 +14,7 @@ module Driver_mouse(
     CLK_50MHZ, MASTER_RST,
     PS2C, PS2D,
     XCOORD, YCOORD,
-    L_BUTTON, R_BUTTON, M_BUTTON,
+    L_BUTTON, R_BUTTON, M_BUTTON
     );
     
 //==================================================================//

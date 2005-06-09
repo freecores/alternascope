@@ -1,14 +1,32 @@
-//==================================================================
-// File:    d_TopLevel.v
-// Version: 0.01
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// Copyright Stephen Pickett
-//   April 28, 2005
-//------------------------------------------------------------------
-// Revisions:
-// Ver 0.01     Apr 28, 2005    Initial Release
-//
-//==================================================================
+//==================================================================//
+// File:    d_TopLevel.v                                            //
+// Version: 0.0.0.2                                                 //
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -//
+// Copyright (C) Stephen Pickett                                    //
+//   Jun 08, 2005                                                   //
+//                                                                  //
+// This program is free software; you can redistribute it and/or    //
+// modify it under the terms of the GNU General Public License      //
+// as published by the Free Software Foundation; either version 2   //
+// of the License, or (at your option) any later version.           //
+//                                                                  //
+// This program is distributed in the hope that it will be useful,  //
+// but WITHOUT ANY WARRANTY; without even the implied warranty of   //
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the    //
+// GNU General Public License for more details.                     //
+//                                                                  //
+// If you have not received a copy of the GNU General Public License//
+// along with this program; write to:                               //
+//     Free Software Foundation, Inc.,                              //
+//     51 Franklin Street, Fifth Floor,                             //
+//     Boston, MA  02110-1301, USA.                                 //
+//                                                                  //
+//------------------------------------------------------------------//
+// Revisions:                                                       //
+// Ver 0.0.0.1     Apr   , 2005   Under Development                 //
+// Ver 0.0.0.2     Jun 08, 2005    Updates                          //
+//                                                                  //
+//==================================================================//
 
 module TopLevel(
     CLK_50MHZ_IN, MASTER_RST,
@@ -77,13 +95,12 @@ assign TIME_BASE = 6'b0;
 //==================================================================//
 wire[17:0] VGA_RAM_ADDRESS_w;
 wire[15:0] VGA_RAM_DATA_w;
+wire L_BUTTON, R_BUTTON, M_BUTTON;
 
 wire VGA_RAM_ACCESS_OK;
 wire CLK_50MHZ, CLK_64MHZ, CLK180_64MHZ;
 wire[6:0] SEG_OUT;
 wire[3:0] SEG_SEL;
-
-wire TEST_in_range_Trig;
 
 sub_SegDriver segs(
     .CLK_50MHZ(CLK_50MHZ), .MASTER_RST(MASTER_RST),
@@ -95,7 +112,7 @@ wire[7:0] leds;
 assign leds[0] = L_BUTTON;
 assign leds[1] = M_BUTTON;
 assign leds[2] = R_BUTTON;
-assign leds[3] = TEST_in_range_Trig;
+assign leds[3] = 1'b0;
 assign leds[7:4] = 4'b0;
 //==================================================================//
 // SUBROUTINES                                                      //
@@ -112,8 +129,7 @@ d_DCM clock_generator(
     );
 
 wire[11:0] XCOORD, YCOORD;
-wire L_BUTTON, R_BUTTON, M_BUTTON;
-wire[8:0] TRIGGER_LEVEL;
+wire[9:0] TRIGGER_LEVEL;
 Driver_mouse driver_MOUSE(
     .CLK_50MHZ(CLK_50MHZ), .MASTER_RST(MASTER_RST),
     .PS2C(PS2C), .PS2D(PS2D),
@@ -123,10 +139,9 @@ Driver_mouse driver_MOUSE(
     
 Driver_MouseInput Driver_MouseInput_inst(
     .CLK_50MHZ(CLK_50MHZ), .MASTER_RST(MASTER_RST),
-    .XCOORD(XCOORD), .YCOORD(YCOORD),
+    .XCOORD(XCOORD[9:0]), .YCOORD(YCOORD[9:0]),
     .L_BUTTON(L_BUTTON), .M_BUTTON(M_BUTTON), .R_BUTTON(R_BUTTON),
-    .TRIGGER_LEVEL(TRIGGER_LEVEL),
-    .TEST_in_range_Trig(TEST_in_range_Trig)
+    .TRIGGER_LEVEL(TRIGGER_LEVEL)
     );
 
 
@@ -143,7 +158,7 @@ ADCDataBuffer ram_ADC_databuffer(
     .RAM_ADDR(ADC_RAM_ADDR), .RAM_DATA(ADC_RAM_DATA), .RAM_CLK(ADC_RAM_CLK),
     .ADC_DATA(ADC_DATA), .ADC_CLK(ADC_CLK),
     .TRIG_ADDR(TRIG_ADDR), .VGA_WRITE_DONE(VGA_WRITE_DONE),
-    .TRIGGER_LEVEL(TRIGGER_LEVEL)
+    .TRIGGER_LEVEL(TRIGGER_LEVEL[8:0])
     );
 
 
@@ -178,7 +193,7 @@ Driver_VGA driver_VGA(
     .VGA_RAM_DATA(VGA_RAM_DATA), .VGA_RAM_ADDR(VGA_RAM_ADDRESS_r),
     .VGA_RAM_OE(VGA_RAM_OE_r), .VGA_RAM_WE(VGA_RAM_WE_r), .VGA_RAM_CS(VGA_RAM_CS_r),
     .VGA_RAM_ACCESS_OK(VGA_RAM_ACCESS_OK),
-    .TRIGGER_LEVEL(TRIGGER_LEVEL),
+    .TRIGGER_LEVEL(TRIGGER_LEVEL[8:0]),
     .SHOW_LEVELS(SHOW_LEVELS_BUTTON)
     );
 
