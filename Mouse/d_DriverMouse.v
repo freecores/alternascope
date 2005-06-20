@@ -171,14 +171,14 @@ end
 
 always @ (posedge CLK_ps2c_debounced or posedge MASTER_RST) begin
     if(MASTER_RST == 1'b1) begin
-        YCOORD <= 12'd100;
+        YCOORD <= 12'd199;
     end else if(Counter_bits == 6'd32 && (data_in_buf[8] == 1'b0)) begin
-        if(data_in_buf[6] == 1'b1) begin    // POSITIVE
+        if(data_in_buf[6] == 1'b0) begin
             if((YCOORD + ycoord_buf) >= 11'd479)
                 YCOORD <= 12'd479;
             else
                 YCOORD <= YCOORD + ycoord_buf;
-        end else begin  // POSITIVE
+        end else begin
             if(YCOORD <= ycoord_buf)
                 YCOORD <= 12'd0;
             else

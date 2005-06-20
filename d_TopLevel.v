@@ -1,6 +1,6 @@
 //==================================================================//
 // File:    d_TopLevel.v                                            //
-// Version: 0.0.0.2                                                 //
+// Version: 0.0.0.3                                                 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -//
 // Copyright (C) Stephen Pickett                                    //
 //   Jun 08, 2005                                                   //
@@ -25,6 +25,7 @@
 // Revisions:                                                       //
 // Ver 0.0.0.1     Apr   , 2005   Under Development                 //
 // Ver 0.0.0.2     Jun 08, 2005    Updates                          //
+// Ver 0.0.0.3     Jun 19, 2005    Added Character Display          //
 //                                                                  //
 //==================================================================//
 
@@ -99,25 +100,50 @@ wire L_BUTTON, R_BUTTON, M_BUTTON;
 
 wire VGA_RAM_ACCESS_OK;
 wire CLK_50MHZ, CLK_64MHZ, CLK180_64MHZ;
+reg CLK_VGA;
 wire[6:0] SEG_OUT;
 wire[3:0] SEG_SEL;
 
+wire[7:0] data_charRamRead;
+reg[7:0] data_charRamRead_buf;
+wire[7:0] mask_charMap;
+reg[7:0] mask_charMap_buf;
+
+always @ (posedge CLK_50MHZ) begin
+    if(R_BUTTON) begin
+        data_charRamRead_buf <= data_charRamRead_buf;
+        mask_charMap_buf <= mask_charMap_buf;
+    end else begin
+        data_charRamRead_buf <= data_charRamRead;
+        mask_charMap_buf <= mask_charMap;
+    end
+end
+
 sub_SegDriver segs(
     .CLK_50MHZ(CLK_50MHZ), .MASTER_RST(MASTER_RST),
-    .DATA_IN(),
+    .DATA_IN(data_charRamRead_buf),
     .SEG_OUT(SEG_OUT), .SEG_SEL(SEG_SEL)
     );
 
 wire[7:0] leds;
-assign leds[0] = L_BUTTON;
-assign leds[1] = M_BUTTON;
-assign leds[2] = R_BUTTON;
-assign leds[3] = 1'b0;
-assign leds[7:4] = 4'b0;
+assign leds = mask_charMap_buf;
+
 //==================================================================//
 // SUBROUTINES                                                      //
 //==================================================================//
-//wire CLK_50MHZ, CLK_64MHZ, CLK180_64MHZ;
+//d_DCM_VGA clock_gen_VGA (
+//    .CLKIN_IN(CLK_50MHZ_IN), 
+//    .RST_IN(MASTER_RST), 
+//    .CLKFX_OUT(CLK_VGA), 
+//    .CLKIN_IBUFG_OUT(CLK_50MHZ_B), 
+//    .LOCKED_OUT(CLK_VGA_LOCKED)
+//    );
+
+always @ (posedge CLK_50MHZ or posedge MASTER_RST)
+    if(MASTER_RST) CLK_VGA <= 1'b0;
+    else           CLK_VGA <= ~CLK_VGA;
+
+
 wire CLK_64MHZ_LOCKED;
 d_DCM clock_generator(
     .CLKIN_IN(CLK_50MHZ_IN),
@@ -163,6 +189,21 @@ ADCDataBuffer ram_ADC_databuffer(
 
 
 
+//------------------------------------------------------------------//
+//   VGA                                                            //
+//------------------------------------------------------------------//
+wire[9:0] HCNT, VCNT;
+wire[2:0] RGB_CHAR;
+
+
+CharacterDisplay charTest(
+    .MASTER_CLK(CLK_50MHZ), .MASTER_RST(MASTER_RST),
+    .CLK_VGA(CLK_VGA), .HCNT(HCNT), .VCNT(VCNT),
+    .RGB_OUT(RGB_CHAR),
+    .data_charMap(mask_charMap), .data_charRamRead(data_charRamRead)
+    );
+
+
 //wire[17:0] VGA_RAM_ADDRESS_w;
 //wire[15:0] VGA_RAM_DATA_w;
 wire VGA_RAM_OE_w, VGA_RAM_WE_w, VGA_RAM_CS_w;
@@ -188,13 +229,16 @@ VGADataBuffer ram_VGA_ramwrite(
 
 Driver_VGA driver_VGA(
     .CLK_50MHZ(CLK_50MHZ), .MASTER_RST(MASTER_RST),
+    .CLK_VGA(CLK_VGA),
     .H_SYNC(H_SYNC), .V_SYNC(V_SYNC), .VGA_OUTPUT(VGA_OUTPUT),
     .XCOORD(XCOORD), .YCOORD(YCOORD),
     .VGA_RAM_DATA(VGA_RAM_DATA), .VGA_RAM_ADDR(VGA_RAM_ADDRESS_r),
     .VGA_RAM_OE(VGA_RAM_OE_r), .VGA_RAM_WE(VGA_RAM_WE_r), .VGA_RAM_CS(VGA_RAM_CS_r),
     .VGA_RAM_ACCESS_OK(VGA_RAM_ACCESS_OK),
     .TRIGGER_LEVEL(TRIGGER_LEVEL[8:0]),
-    .SHOW_LEVELS(SHOW_LEVELS_BUTTON)
+    .SHOW_LEVELS(SHOW_LEVELS_BUTTON),
+    .HCNT(HCNT), .VCNT(VCNT),
+    .RGB_CHAR(RGB_CHAR)
     );
 
 
