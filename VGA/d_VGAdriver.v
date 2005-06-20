@@ -25,18 +25,23 @@
 // Revisions:                                                       //
 // Ver 0.0.0.1     Apr 28, 2005   Under Development                 //
 //     0.0.0.2     Jun 09, 2005   Cleaning                          //
+//     0.0.0.3     Jun 10, 2005   Re-structuerd the VCNT and HCNT   //
+//                                so they line up with the PXLs.    //
 //                                                                  //
 //==================================================================//
 
 module Driver_VGA(
     CLK_50MHZ, MASTER_RST,
+    CLK_VGA,
     VGA_RAM_DATA, VGA_RAM_ADDR,
     VGA_RAM_OE, VGA_RAM_WE, VGA_RAM_CS,
     VGA_RAM_ACCESS_OK,
     H_SYNC, V_SYNC, VGA_OUTPUT,
     XCOORD, YCOORD, ram_vshift,
     TRIGGER_LEVEL,
-    SHOW_LEVELS
+    SHOW_LEVELS,
+    HCNT, VCNT,
+    RGB_CHAR
     );
     
 //==================================================================//
@@ -56,6 +61,7 @@ parameter P_white   = 3'b111;
 //----------------------//
 input CLK_50MHZ;                // System wide clock
 input MASTER_RST;               // System wide reset
+input CLK_VGA;
 output H_SYNC;                  // The H_SYNC timing signal to the VGA monitor
 output V_SYNC;                  // The V_SYNC timing signal to the VGA monitor
 output[2:0]  VGA_OUTPUT;        // The 3-bit VGA output
@@ -66,8 +72,11 @@ output VGA_RAM_OE, VGA_RAM_WE, VGA_RAM_CS;
 output VGA_RAM_ACCESS_OK;
 input[8:0] TRIGGER_LEVEL;
 input SHOW_LEVELS;
+output[9:0] HCNT, VCNT;
+input[2:0] RGB_CHAR;
 
 output[15:0] ram_vshift;
+
 
 
 
@@ -77,6 +86,7 @@ output[15:0] ram_vshift;
 reg H_SYNC, V_SYNC;
 reg [2:0]  VGA_OUTPUT;
 wire CLK_50MHZ, MASTER_RST;
+wire CLK_VGA;
 wire[11:0] XCOORD, YCOORD;
 wire[15:0] VGA_RAM_DATA;
 reg[17:0]  VGA_RAM_ADDR;
@@ -84,12 +94,15 @@ reg VGA_RAM_OE, VGA_RAM_WE, VGA_RAM_CS;
 reg VGA_RAM_ACCESS_OK;
 wire[8:0] TRIGGER_LEVEL;
 wire SHOW_LEVELS;
+wire[9:0] HCNT, VCNT;
+wire[2:0] RGB_CHAR;
 
 
 //----------------------//
 // REGISTERS            //
 //----------------------//
-reg CLK_25MHZ;      // General system clock for VGA timing
+//reg CLK_25MHZ;      // General system clock for VGA timing
+wire CLK_25MHZ = CLK_VGA;
 reg [9:0] hcnt;     // Counter - generates the H_SYNC signal
 reg [9:0] vcnt;     // Counter - counts the H_SYNC pulses to generate V_SYNC signal
 reg[2:0]  vga_out;
@@ -97,15 +110,17 @@ reg[2:0]  vga_out;
 //==================================================================//
 // FUNCTIONAL DEFINITIONS                                           //
 //==================================================================//
+assign HCNT = hcnt;
+assign VCNT = vcnt;
 
 //------------------------------------------------------------------//
 // CLOCK FUNCTIONS                                                  //
 //------------------------------------------------------------------//
-always @ (posedge CLK_50MHZ or posedge MASTER_RST)
-        if (MASTER_RST == 1'b1)
-            CLK_25MHZ <= 1'b0;
-        else
-            CLK_25MHZ <= ~CLK_25MHZ;
+//always @ (posedge CLK_50MHZ or posedge MASTER_RST)
+//        if (MASTER_RST == 1'b1)
+//            CLK_25MHZ <= 1'b0;
+//        else
+//            CLK_25MHZ <= ~CLK_25MHZ;
 
 
 //------------------------------------------------------------------//
@@ -114,13 +129,13 @@ always @ (posedge CLK_50MHZ or posedge MASTER_RST)
 always @ (posedge CLK_25MHZ or posedge MASTER_RST) begin
     if (MASTER_RST == 1'b1) begin
         hcnt <= 10'd0;
-        vcnt <= 10'd0;
+        vcnt <= 10'd430;
     end else if (hcnt == 10'd0799) begin
         hcnt <= 10'd0;
-        if (vcnt == 10'd0520)
-            vcnt <= 10'd0;
+        if (vcnt == 10'd0)
+            vcnt <= 10'd520;
         else
-            vcnt <= vcnt + 1'b1;
+            vcnt <= vcnt - 1'b1;
     end else
         hcnt <= hcnt + 1'b1;
 end
@@ -130,7 +145,7 @@ end
 // HORIZONTAL SYNC TIMING                                           //
 //------------------------------------------------------------------//
 always @ (hcnt)
-    if (hcnt <= 10'd0095)
+    if (hcnt >= 10'd656 && hcnt <= 10'd751)
         H_SYNC = 1'b0;
     else
         H_SYNC = 1'b1;
@@ -140,7 +155,7 @@ always @ (hcnt)
 // VERTICAL SYNC TIMING                                             //
 //------------------------------------------------------------------//
 always @ (vcnt)
-    if (vcnt <= 10'd0001)
+    if (vcnt == 10'd430 || vcnt == 10'd429)
         V_SYNC = 1'b0;
     else
         V_SYNC = 1'b1;
@@ -154,63 +169,58 @@ always @ (hcnt or vcnt or XCOORD or YCOORD or MASTER_RST or vga_out or SHOW_LEVE
         VGA_OUTPUT = P_black;
     //------------------------------------------------------------------------------//
     // UNSEEN BORDERS                                                               //
-    end else if( (vcnt <= 10'd30) || (vcnt >= 10'd511) ) begin
+    end else if( (vcnt >= 10'd400) && (vcnt <= 10'd440) ) begin
         VGA_OUTPUT = P_black;
-    end else if( (hcnt <= 10'd143) || (hcnt >= 10'd784) ) begin
+    end else if( (hcnt >= 10'd640) ) begin
         VGA_OUTPUT = P_black;
     //------------------------------------------------------------------------------//
     // MOUSE CURSORS                                                                //
-    end else if(vcnt == (YCOORD+10'd31)) begin
+    end else if(vcnt == YCOORD) begin
         VGA_OUTPUT = P_green;
-    end else if(hcnt == (XCOORD+10'd144)) begin
+    end else if(hcnt == XCOORD) begin
         VGA_OUTPUT = P_green;
     //------------------------------------------------------------------------------//
     // TRIGGER SPRITE         (shows as ------T------ )                             //
-    end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL+10'd31) && hcnt != 10'd700 && hcnt != 10'd702) begin
+    end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL) && hcnt != 10'd556 && hcnt != 10'd558) begin
         VGA_OUTPUT = P_yellow;
-    end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL-1'b1+10'd31) && hcnt >= 10'd700 && hcnt <= 10'd702) begin
+    end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL+1'b1) && hcnt >= 10'd556 && hcnt <= 10'd558) begin
         VGA_OUTPUT = P_yellow;
-    end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL+1'b1+10'd31) && hcnt == 10'd701) begin
+    end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL-1'b1) && hcnt == 10'd557) begin
         VGA_OUTPUT = P_yellow;
 ///*
     //------------------------------------------------------------------------------//
     // MOVE THE WAVEFORM TO THE 'TOP'                                               //
-    end else if(vga_out != 0 && (vcnt < 10'd431)) begin
+    end else if(vga_out != 0) begin
         VGA_OUTPUT = vga_out;
 //*/
     //------------------------------------------------------------------------------//
     // TOP, BOTTOM, LEFT AND RIGHT GRID LINES                                       //
-    end else if( vcnt == 10'd031 || vcnt == 10'd431 || vcnt == 10'd510) begin
+    end else if(vcnt == 10'd0 || vcnt == 10'd399 || vcnt == 10'd441) begin
         VGA_OUTPUT = P_cyan;
-    end else if( hcnt == 10'd144 || hcnt == 10'd783) begin
+    end else if(hcnt == 10'd0 || hcnt == 10'd639) begin
         VGA_OUTPUT = P_cyan;
     //------------------------------------------------------------------------------//
     // MIDDLE GRID LINES (dashed at 8pxls)                                          //
-    end else if(vcnt == 10'd231 && hcnt[3] == 1'b1) begin
+    end else if(vcnt == 10'd199 && hcnt[3] == 1'b1) begin
         VGA_OUTPUT = P_cyan;
-    end else if((hcnt == 10'd464) && (vcnt <= 10'd431) && (vcnt[3] == 1'b1)) begin
+    end else if((hcnt == 10'd319) && (vcnt <= 10'd399) && (vcnt[3] == 1'b1)) begin
         VGA_OUTPUT = P_cyan;
     //------------------------------------------------------------------------------//
     // OTHER HORIZONTAL LINES (dashed at 4pxls)                                     //
-    end else if((vcnt == 10'd071 || vcnt == 10'd111 || vcnt == 10'd151 || vcnt == 10'd191 || vcnt == 10'd271 || vcnt == 10'd311 || vcnt == 10'd351 || vcnt == 10'd391) && (hcnt[2] == 1'b1)) begin
+    end else if((vcnt == 10'd39 || vcnt == 10'd79 || vcnt == 10'd119 || vcnt == 10'd159 || vcnt == 10'd239 || vcnt == 10'd279 || vcnt == 10'd319 || vcnt == 10'd359) && (hcnt[2] == 1'b1)) begin
         VGA_OUTPUT = P_cyan;
     //------------------------------------------------------------------------------//
     // OTHER VERTICAL LINES (dashed at 4pxls)                                       //
-    end else if(((hcnt[5:0] == 6'b010000) && (vcnt <= 10'd431)) && (vcnt[2] == 1'b1)) begin
+    end else if(((hcnt[5:0] == 6'b111111) && (vcnt <= 10'd399)) && (vcnt[2] == 1'b1)) begin
         VGA_OUTPUT = P_cyan;
+    //------------------------------------------------------------------------------//
+    // CHARACTER DISPLAY
+    end else if(vcnt <= 10'd520 && vcnt >= 10'd441) begin
+        VGA_OUTPUT = RGB_CHAR;
     //------------------------------------------------------------------------------//
     // OTHERWISE...                                                                 //
     end else
         VGA_OUTPUT = P_black;
-/*
-    //------------------------------------------------------------------------------//
-    // DISPLAY DATA                                                                 //
-    end else if(vcnt >= 10'd431) begin
-        VGA_OUTPUT = P_black;
-    end else begin
-        VGA_OUTPUT = vga_out;
-    end
-*/
 end
 
 //------------------------------------------------------------------//
@@ -224,11 +234,11 @@ end
 //     row 16: ram_addr = 23 and 25 for each pxl *
 //     row 17: ram_addr = 23 and 25 for each pxl *
 //       ...
-reg[9:0]  ram_hcnt;
+/*reg[9:0]  ram_hcnt;*/
 reg[4:0]  ram_vcnt;
 reg[15:0] ram_vshift;
 
-
+/*
 always @ (posedge CLK_25MHZ or posedge MASTER_RST) begin
     if(MASTER_RST == 1'b1) begin
         ram_hcnt <= 10'd639;
@@ -241,13 +251,14 @@ always @ (posedge CLK_25MHZ or posedge MASTER_RST) begin
         ram_hcnt <= 10'd639;
     end
 end
+*/
 
 always @ (posedge CLK_25MHZ or posedge MASTER_RST) begin
     if(MASTER_RST == 1'b1) begin
         ram_vshift <= 16'h8000;
-    end else if(vcnt < 10'd31) begin
+    end else if(vcnt > 10'd399) begin
         ram_vshift <= 16'h8000;
-    end else if((vcnt >= 10'd31) && (hcnt == 10'd0799)) begin
+    end else if((vcnt <= 10'd399) && (hcnt == 10'd655)) begin
         if(ram_vshift == 16'h0001)
             ram_vshift <= 16'h8000;
         else
@@ -261,10 +272,10 @@ always @ (posedge CLK_25MHZ or posedge MASTER_RST) begin
         ram_vcnt <= 5'd0;
     end else if(vcnt < 10'd30) begin
         ram_vcnt <= 5'd0;
-    end else if((vcnt >= 10'd30) && (hcnt == 10'd0799) && (ram_vshift == 16'h0001)) begin
+    end else if((vcnt >= 10'd30) && (hcnt == 10'd655) && (ram_vshift == 16'h0001)) begin
         if(ram_vcnt == 5'd0)
             ram_vcnt <= 5'd24;
-        else
+else
             ram_vcnt <= ram_vcnt - 1'b1;
     end else begin
         ram_vcnt <= ram_vcnt;
@@ -273,8 +284,8 @@ end
 
 
 
-always @ (ram_hcnt or ram_vcnt) begin
-    VGA_RAM_ADDR = ram_vcnt + (ram_hcnt * 7'd025);
+always @ (hcnt or ram_vcnt) begin
+    VGA_RAM_ADDR = ram_vcnt + (hcnt * 7'd25);
 end
 
 
@@ -297,7 +308,7 @@ end
 // ALL CLEAR?                                                       //
 //------------------------------------------------------------------//
 always @ (vcnt) begin
-    if(vcnt >= 10'd512 || vcnt < 10'd30)
+    if((vcnt >= 10'd400) && (vcnt <= 10'd440))
         VGA_RAM_ACCESS_OK = 1'b1;
     else
         VGA_RAM_ACCESS_OK = 1'b0;
