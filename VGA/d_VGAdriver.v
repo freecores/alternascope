@@ -1,6 +1,6 @@
 //==================================================================//
 // File:    d_VGAdriver.v                                           //
-// Version: 0.0.0.2                                                 //
+// Version: 0.0.0.3                                                 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -//
 // Copyright (C) Stephen Pickett                                    //
 //   Jun 09, 2005                                                   //
@@ -75,8 +75,6 @@ input SHOW_LEVELS;
 output[9:0] HCNT, VCNT;
 input[2:0] RGB_CHAR;
 
-output[15:0] ram_vshift;
-
 
 
 
@@ -101,7 +99,6 @@ wire[2:0] RGB_CHAR;
 //----------------------//
 // REGISTERS            //
 //----------------------//
-//reg CLK_25MHZ;      // General system clock for VGA timing
 wire CLK_25MHZ = CLK_VGA;
 reg [9:0] hcnt;     // Counter - generates the H_SYNC signal
 reg [9:0] vcnt;     // Counter - counts the H_SYNC pulses to generate V_SYNC signal
@@ -112,15 +109,6 @@ reg[2:0]  vga_out;
 //==================================================================//
 assign HCNT = hcnt;
 assign VCNT = vcnt;
-
-//------------------------------------------------------------------//
-// CLOCK FUNCTIONS                                                  //
-//------------------------------------------------------------------//
-//always @ (posedge CLK_50MHZ or posedge MASTER_RST)
-//        if (MASTER_RST == 1'b1)
-//            CLK_25MHZ <= 1'b0;
-//        else
-//            CLK_25MHZ <= ~CLK_25MHZ;
 
 
 //------------------------------------------------------------------//
@@ -187,12 +175,10 @@ always @ (hcnt or vcnt or XCOORD or YCOORD or MASTER_RST or vga_out or SHOW_LEVE
         VGA_OUTPUT = P_yellow;
     end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL-1'b1) && hcnt == 10'd557) begin
         VGA_OUTPUT = P_yellow;
-///*
     //------------------------------------------------------------------------------//
     // MOVE THE WAVEFORM TO THE 'TOP'                                               //
     end else if(vga_out != 0) begin
         VGA_OUTPUT = vga_out;
-//*/
     //------------------------------------------------------------------------------//
     // TOP, BOTTOM, LEFT AND RIGHT GRID LINES                                       //
     end else if(vcnt == 10'd0 || vcnt == 10'd399 || vcnt == 10'd441) begin
@@ -234,24 +220,8 @@ end
 //     row 16: ram_addr = 23 and 25 for each pxl *
 //     row 17: ram_addr = 23 and 25 for each pxl *
 //       ...
-/*reg[9:0]  ram_hcnt;*/
 reg[4:0]  ram_vcnt;
 reg[15:0] ram_vshift;
-
-/*
-always @ (posedge CLK_25MHZ or posedge MASTER_RST) begin
-    if(MASTER_RST == 1'b1) begin
-        ram_hcnt <= 10'd639;
-    end else if(hcnt >= 10'd143 && hcnt <= 782) begin
-        if(ram_hcnt == 10'd639)
-            ram_hcnt <= 10'b0;
-        else
-            ram_hcnt <= ram_hcnt + 1'b1;
-    end else begin
-        ram_hcnt <= 10'd639;
-    end
-end
-*/
 
 always @ (posedge CLK_25MHZ or posedge MASTER_RST) begin
     if(MASTER_RST == 1'b1) begin
