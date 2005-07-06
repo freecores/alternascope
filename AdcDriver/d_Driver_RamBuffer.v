@@ -18,7 +18,8 @@ module ADCDataBuffer(
     ADC_DATA, ADC_CLK,
     TRIG_ADDR,
     VGA_WRITE_DONE,
-    TRIGGER_LEVEL
+    TRIGGER_LEVEL,
+    sm_trig
     );
     
 //==================================================================//
@@ -53,6 +54,9 @@ output[10:0] TRIG_ADDR;
 input        VGA_WRITE_DONE;
 input[8:0]   TRIGGER_LEVEL;
 
+output[1:0] sm_trig;
+
+
 //----------------------//
 // WIRES / NODES        //
 //----------------------//
@@ -76,7 +80,6 @@ wire[8:0]  TRIGGER_LEVEL;
 //==================================================================//
 // 'SUB-ROUTINES'                                                   //
 //==================================================================//
-
 //------------------------------------------------------------------//
 // Instanstiate the ADC                                             //
 //------------------------------------------------------------------//
@@ -98,7 +101,7 @@ Driver_ADC ADC(
 //     Access A: 8bit + 1parity (ADC_Write)                         //
 //     Access B: 8bit + 1parity (Read)                              //
 //------------------------------------------------------------------//
-reg[10:0] ADDRA;
+reg[10:0] ADDRA;	
 wire VCC, GND;
 assign VCC = 1'b1;
 assign GND = 1'b0;
@@ -132,7 +135,7 @@ always @ (posedge CLK_64MHZ or posedge MASTER_RST) begin
         sm_trig <= ss_fill_mem_half;
     else if(sm_trig == ss_fill_mem_half && mem_half_full == 1'b1)
         sm_trig <= ss_write_buffer;
-    else if(sm_trig == ss_write_buffer && trigger_detected == 1'b0 && VGA_WRITE_DONE == 1'b1)
+    else if(sm_trig == ss_write_buffer && /*trigger_detected == 1'b0 &&*/ VGA_WRITE_DONE == 1'b1)
         sm_trig <= ss_wait_for_trig;
     else if(sm_trig == ss_invalid)
         sm_trig <= ss_wait_for_trig;
@@ -150,11 +153,11 @@ always @ (posedge ADC_CLK or posedge MASTER_RST) begin
         ADDRA <= ADDRA + 1;
     else
         ADDRA <= ADDRA;
+//        ADDRA <= ADDRA + 1;
 end
 
 /* LATCHING THE TRIGGER  */
 always @ (ADC_DATA) begin
-//    if(ADC_DATA >= P_trigger_level)
     if(ADC_DATA >= TRIGGER_LEVEL)
         trigger_detected = 1'b1;
     else
@@ -168,7 +171,8 @@ always @ (posedge ADC_CLK or posedge MASTER_RST) begin
     else if(sm_trig == ss_fill_mem_half)
         cnt_1024bytes <= cnt_1024bytes + 1;
     else
-        cnt_1024bytes <= cnt_1024bytes;
+        cnt_1024bytes <= 10'b0;
+//        cnt_1024bytes <= cnt_1024bytes;
 end
 
 always @ (cnt_1024bytes) begin

@@ -37,7 +37,7 @@ module Driver_VGA(
     VGA_RAM_OE, VGA_RAM_WE, VGA_RAM_CS,
     VGA_RAM_ACCESS_OK,
     H_SYNC, V_SYNC, VGA_OUTPUT,
-    XCOORD, YCOORD, ram_vshift,
+    XCOORD, YCOORD,
     TRIGGER_LEVEL,
     SHOW_LEVELS,
     HCNT, VCNT,
@@ -176,15 +176,19 @@ always @ (hcnt or vcnt or XCOORD or YCOORD or MASTER_RST or vga_out or SHOW_LEVE
     end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL-1'b1) && hcnt == 10'd557) begin
         VGA_OUTPUT = P_yellow;
     //------------------------------------------------------------------------------//
-    // MOVE THE WAVEFORM TO THE 'TOP'                                               //
-    end else if(vga_out != 0) begin
-        VGA_OUTPUT = vga_out;
-    //------------------------------------------------------------------------------//
     // TOP, BOTTOM, LEFT AND RIGHT GRID LINES                                       //
     end else if(vcnt == 10'd0 || vcnt == 10'd399 || vcnt == 10'd441) begin
         VGA_OUTPUT = P_cyan;
     end else if(hcnt == 10'd0 || hcnt == 10'd639) begin
         VGA_OUTPUT = P_cyan;
+    //------------------------------------------------------------------------------//
+    // CHARACTER DISPLAY
+    end else if(vcnt <= 10'd520 && vcnt >= 10'd441) begin
+        VGA_OUTPUT = RGB_CHAR;
+    //------------------------------------------------------------------------------//
+    // THE WAVEFORM                                                                 //
+    end else if(vga_out != 0) begin
+        VGA_OUTPUT = vga_out;
     //------------------------------------------------------------------------------//
     // MIDDLE GRID LINES (dashed at 8pxls)                                          //
     end else if(vcnt == 10'd199 && hcnt[3] == 1'b1) begin
@@ -199,10 +203,6 @@ always @ (hcnt or vcnt or XCOORD or YCOORD or MASTER_RST or vga_out or SHOW_LEVE
     // OTHER VERTICAL LINES (dashed at 4pxls)                                       //
     end else if(((hcnt[5:0] == 6'b111111) && (vcnt <= 10'd399)) && (vcnt[2] == 1'b1)) begin
         VGA_OUTPUT = P_cyan;
-    //------------------------------------------------------------------------------//
-    // CHARACTER DISPLAY
-    end else if(vcnt <= 10'd520 && vcnt >= 10'd441) begin
-        VGA_OUTPUT = RGB_CHAR;
     //------------------------------------------------------------------------------//
     // OTHERWISE...                                                                 //
     end else
@@ -228,7 +228,7 @@ always @ (posedge CLK_25MHZ or posedge MASTER_RST) begin
         ram_vshift <= 16'h8000;
     end else if(vcnt > 10'd399) begin
         ram_vshift <= 16'h8000;
-    end else if((vcnt <= 10'd399) && (hcnt == 10'd655)) begin
+    end else if(/*(vcnt <= 10'd399) && */(hcnt == 10'd640)) begin
         if(ram_vshift == 16'h0001)
             ram_vshift <= 16'h8000;
         else
@@ -239,13 +239,13 @@ end
 
 always @ (posedge CLK_25MHZ or posedge MASTER_RST) begin
     if(MASTER_RST == 1'b1) begin
-        ram_vcnt <= 5'd0;
-    end else if(vcnt < 10'd30) begin
-        ram_vcnt <= 5'd0;
-    end else if((vcnt >= 10'd30) && (hcnt == 10'd655) && (ram_vshift == 16'h0001)) begin
+        ram_vcnt <= 5'd24;//5'b0
+    end else if(vcnt > 10'd399) begin
+        ram_vcnt <= 5'd24;
+    end else if(/*(vcnt >= 10'd30) &&*/ (hcnt == 10'd640) && (ram_vshift == 16'h0001)) begin
         if(ram_vcnt == 5'd0)
             ram_vcnt <= 5'd24;
-else
+        else
             ram_vcnt <= ram_vcnt - 1'b1;
     end else begin
         ram_vcnt <= ram_vcnt;
@@ -256,6 +256,7 @@ end
 
 always @ (hcnt or ram_vcnt) begin
     VGA_RAM_ADDR = ram_vcnt + (hcnt * 7'd25);
+//    VGA_RAM_ADDR = vcnt * hcnt;
 end
 
 
@@ -278,7 +279,7 @@ end
 // ALL CLEAR?                                                       //
 //------------------------------------------------------------------//
 always @ (vcnt) begin
-    if((vcnt >= 10'd400) && (vcnt <= 10'd440))
+    if(vcnt > 10'd399)
         VGA_RAM_ACCESS_OK = 1'b1;
     else
         VGA_RAM_ACCESS_OK = 1'b0;

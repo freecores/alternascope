@@ -110,7 +110,7 @@ end
 /* TRIG_ADDR modified */
 always @ (TRIG_ADDR) begin
     if(TRIG_ADDR < 10'd320)
-        TRIG_ADDR_buffered = (10'd2048 - 10'd1 - 10'd320) - TRIG_ADDR;
+        TRIG_ADDR_buffered = (11'd2047 - 10'd320) - TRIG_ADDR;
     else
         TRIG_ADDR_buffered = TRIG_ADDR;
 end
@@ -129,9 +129,28 @@ always @ (posedge CLK_50MHZ or posedge MASTER_RST) begin
     end
 end
 
-always @ (ADC_RAM_DATA) begin
-    adc_data_scale = ADC_RAM_DATA + (ADC_RAM_DATA>>1);
+reg[7:0] TESTING_CNT;
+always @ (posedge CLK_50MHZ or posedge MASTER_RST) begin
+    if(MASTER_RST == 1'b1) begin
+        TESTING_CNT <= 8'd0;
+    end else if(VGA_RAM_ACCESS_OK) begin
+        if(vcnt == 5'd24)
+            TESTING_CNT <= TESTING_CNT+1;
+        else
+            TESTING_CNT <= TESTING_CNT;
+    end else begin
+        TESTING_CNT <= 8'b0;
+    end
 end
+
+
+always @ (ADC_RAM_DATA) begin
+//      adc_data_scale = TESTING_CNT + (TESTING_CNT>>1) + (TESTING_CNT>>4) + (TESTING_CNT>>6);
+//      adc_data_scale = ADC_RAM_DATA + (ADC_RAM_DATA>>1) + (ADC_RAM_DATA>>4) + (ADC_RAM_DATA>>6);
+      adc_data_scale = ADC_RAM_DATA;
+end
+
+
 
 
 always @ (posedge CLK_50MHZ or posedge MASTER_RST) begin

@@ -109,6 +109,8 @@ reg[7:0] data_charRamRead_buf;
 wire[7:0] mask_charMap;
 reg[7:0] mask_charMap_buf;
 
+wire[1:0] sm_trig;
+
 always @ (posedge CLK_50MHZ) begin
     if(R_BUTTON) begin
         data_charRamRead_buf <= data_charRamRead_buf;
@@ -126,7 +128,20 @@ sub_SegDriver segs(
     );
 
 wire[7:0] leds;
-assign leds = mask_charMap_buf;
+assign leds[1:0] = sm_trig;
+assign leds[7:2] = 6'b0;
+
+/*- - - - - - - - - - - - - */
+/* Fake ADC data            */
+/*- - - - - - - - - - - - - */
+reg[7:0] fake_adcData;
+always @ (posedge CLK_VGA or posedge MASTER_RST) begin
+    if(MASTER_RST)
+        fake_adcData <= 8'd0;
+    else
+        fake_adcData <= fake_adcData+1;
+end
+
 
 //==================================================================//
 // SUBROUTINES                                                      //
@@ -182,9 +197,11 @@ ADCDataBuffer ram_ADC_databuffer(
     .CLK180_64MHZ(CLK180_64MHZ),
     .TIME_BASE(TIME_BASE),
     .RAM_ADDR(ADC_RAM_ADDR), .RAM_DATA(ADC_RAM_DATA), .RAM_CLK(ADC_RAM_CLK),
-    .ADC_DATA(ADC_DATA), .ADC_CLK(ADC_CLK),
+//    .ADC_DATA(ADC_DATA), .ADC_CLK(ADC_CLK),
+    .ADC_DATA(fake_adcData), .ADC_CLK(ADC_CLK),
     .TRIG_ADDR(TRIG_ADDR), .VGA_WRITE_DONE(VGA_WRITE_DONE),
-    .TRIGGER_LEVEL(TRIGGER_LEVEL[8:0])
+    .TRIGGER_LEVEL(TRIGGER_LEVEL[8:0]),
+    .sm_trig(sm_trig)
     );
 
 
@@ -199,8 +216,7 @@ wire[2:0] RGB_CHAR;
 CharacterDisplay charTest(
     .MASTER_CLK(CLK_50MHZ), .MASTER_RST(MASTER_RST),
     .CLK_VGA(CLK_VGA), .HCNT(HCNT), .VCNT(VCNT),
-    .RGB_OUT(RGB_CHAR),
-    .data_charMap(mask_charMap), .data_charRamRead(data_charRamRead)
+    .RGB_OUT(RGB_CHAR)
     );
 
 
