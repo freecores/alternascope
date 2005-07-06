@@ -1,5 +1,5 @@
 //==================================================================//
-// File:    d_xxxxxxxxxxxx                                          //
+// File:    d_CharDecodeSmall.v                                     //
 // Version: 0.0.0.1                                                 //
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -//
 // Copyright (C) Stephen Pickett                                    //
@@ -24,14 +24,14 @@
 //------------------------------------------------------------------//
 // Revisions:                                                       //
 // Ver 0.0.0.1     Jun 17, 2005   Initial Development Release       //
+//                                Based on "d_CharDecode.v"         //
 //                                                                  //
 //==================================================================//
 
 module CharacterDisplay(
     MASTER_CLK, MASTER_RST,
     CLK_VGA, HCNT, VCNT,
-    RGB_OUT,
-    data_charRamRead, data_charMap
+    RGB_OUT
     );
                                                                     
 //==================================================================//
@@ -57,9 +57,6 @@ input[9:0] HCNT;                // Horizontal Sync Counter
 input[9:0] VCNT;                // Vertical Sync Counter
 output[2:0] RGB_OUT;            // The RGB data
 
-output[7:0] data_charRamRead;
-output[7:0] data_charMap;
-
 
 //----------------------//
 // WIRES / NODES        //
@@ -74,9 +71,9 @@ reg[2:0]  RGB_OUT;
 // REGISTERS            //
 //----------------------//
 reg[3:0] cnt_charPxls;
-reg[5:0] cnt_Hchar;
+reg[6:0] cnt_Hchar;
 reg[10:0] cnt_Vchar;
-wire     charRow1, charRow2, charRow3, charRow4;
+wire     charRow1, charRow2, charRow3, charRow4, charRow5, charRow6, charRow7, charRow8;
 
 wire[10:0] addr_charRamRead;
 wire[7:0]  data_charRamRead;
@@ -114,47 +111,54 @@ wire[7:0]  data_charMap;
 
 always @ (posedge CLK_VGA or posedge MASTER_RST) begin
     if(MASTER_RST) begin
-        cnt_charPxls <= 4'd10;
-    end else if(HCNT >= 10'd6) begin //7
+        cnt_charPxls <= 4'd5;
+    end else if(HCNT >= 10'd1) begin //6
         if(cnt_charPxls == 4'd0)
-            cnt_charPxls <= 4'd10;
+            cnt_charPxls <= 4'd5;
         else
             cnt_charPxls <= cnt_charPxls-1;
     end else begin
-        cnt_charPxls <= 4'd10;
+        cnt_charPxls <= 4'd5;
     end
 end
 
 always @ (posedge CLK_VGA or posedge MASTER_RST) begin
     if(MASTER_RST) begin
-        cnt_Hchar <= 6'd0;
-    end else if(HCNT >= 10'd6 && cnt_charPxls == 4'd0) begin
-        if(cnt_Hchar == 6'd56)
-            cnt_Hchar <= 6'd0;
+        cnt_Hchar <= 7'd0;
+    end else if(HCNT >= 10'd1 && cnt_charPxls == 4'd0) begin
+        if(cnt_Hchar == 7'd105)
+            cnt_Hchar <= 7'd0;
         else
             cnt_Hchar <= cnt_Hchar+1;
-    end else if(HCNT < 10'd6) begin
-        cnt_Hchar <= 6'd0;
+    end else if(HCNT < 10'd1) begin
+        cnt_Hchar <= 7'd0;
     end else begin
         cnt_Hchar <= cnt_Hchar;
     end
 end
 
-assign charRow1 = ((VCNT <= 512) && (VCNT >= 498)); // one more
-assign charRow2 = ((VCNT <= 494) && (VCNT >= 480));
-assign charRow3 = ((VCNT <= 476) && (VCNT >= 462));
-assign charRow4 = ((VCNT <= 458) && (VCNT >= 444));
+assign charRow1 = ((VCNT <= 10'd512) && (VCNT >= 10'd506));
+assign charRow2 = ((VCNT <= 10'd503) && (VCNT >= 10'd497));
+assign charRow3 = ((VCNT <= 10'd494) && (VCNT >= 10'd488));
+assign charRow4 = ((VCNT <= 10'd485) && (VCNT >= 10'd479));
+assign charRow5 = ((VCNT <= 10'd476) && (VCNT >= 10'd470));
+assign charRow6 = ((VCNT <= 10'd467) && (VCNT >= 10'd461));
+assign charRow7 = ((VCNT <= 10'd458) && (VCNT >= 10'd452));
+assign charRow8 = ((VCNT <= 10'd449) && (VCNT >= 10'd443));
 
-always @ (charRow1 or charRow2 or charRow3 or charRow4) begin
+always @ (charRow1 or charRow2 or charRow3 or charRow4 or charRow5 or charRow6 or charRow7 or charRow8) begin
          if(charRow1) cnt_Vchar = 11'd0;
-    else if(charRow2) cnt_Vchar = 11'd57;
-    else if(charRow3) cnt_Vchar = 11'd114;
-    else              cnt_Vchar = 11'd174;
+    else if(charRow2) cnt_Vchar = 11'd106;
+    else if(charRow3) cnt_Vchar = 11'd212;
+    else if(charRow4) cnt_Vchar = 11'd318;
+    else if(charRow5) cnt_Vchar = 11'd424;
+    else if(charRow6) cnt_Vchar = 11'd530;
+    else if(charRow7) cnt_Vchar = 11'd636;
+    else if(charRow8) cnt_Vchar = 11'd742;
+    else              cnt_Vchar = 11'd0;
 end
 
 assign addr_charRamRead = cnt_Vchar + cnt_Hchar;
-
-
 
 
 
@@ -165,7 +169,7 @@ always @ (posedge CLK_VGA or posedge MASTER_RST) begin
     if(MASTER_RST) begin
         mask_charMap <= 8'd0;
     end else if(VCNT <= 10'd512) begin
-        if(HCNT == 10'd0 && VCNT[0] == 1'b1) begin  //1B0
+        if(HCNT == 10'd0) begin
             if(mask_charMap == 8'd0)
                 mask_charMap <= 8'b10000000;
             else
@@ -179,7 +183,7 @@ end
 
 
 
-assign addr_charMap = (data_charRamRead * 8'd5) + (cnt_charPxls[3:1]);
+assign addr_charMap = ((data_charRamRead * 8'd5) + cnt_charPxls);
 
 
 //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
@@ -188,12 +192,11 @@ assign addr_charMap = (data_charRamRead * 8'd5) + (cnt_charPxls[3:1]);
 reg[2:0] rgb_buf;
 
 always @ (mask_charMap or data_charMap) begin
-    if((charRow1 | charRow2 | charRow3 | charRow4) && ((mask_charMap & data_charMap) != 8'b0) && (cnt_charPxls != 4'd10) && (HCNT >= 10'd7) && (HCNT <= 10'd632))
+    if((charRow1 | charRow2 | charRow3 | charRow4 | charRow5 | charRow6 | charRow7 | charRow8) && ((mask_charMap & data_charMap) != 8'b0) && (cnt_charPxls != 4'd5) && (HCNT >= 10'd2) && (HCNT <= 10'd637))
         rgb_buf = P_yellow;
     else
         rgb_buf = P_black;
 end
-    
 always @ (posedge CLK_VGA) begin
     RGB_OUT <= rgb_buf;
 end
@@ -214,30 +217,30 @@ end
 
 always @ (posedge MASTER_CLK or posedge MASTER_RST) begin
     if(MASTER_RST)
-        test_cntAddr <= 11'd41;
-    else if(test_cntAddr == 11'd56)
-        test_cntAddr <= 11'd41;
+        test_cntAddr <= 11'd61;
+    else if(test_cntAddr == 11'd76)
+        test_cntAddr <= 11'd61;
     else
         test_cntAddr <= test_cntAddr+1;
 end
 
 always @ (test_cntAddr or test_cnt) begin
-         if(test_cntAddr == 11'd41) data_time[3:0] = test_cnt[63:60];
-    else if(test_cntAddr == 11'd42) data_time[3:0] = test_cnt[59:56];
-    else if(test_cntAddr == 11'd43) data_time[3:0] = test_cnt[55:52];
-    else if(test_cntAddr == 11'd44) data_time[3:0] = test_cnt[51:48];
-    else if(test_cntAddr == 11'd45) data_time[3:0] = test_cnt[47:44];
-    else if(test_cntAddr == 11'd46) data_time[3:0] = test_cnt[43:40];
-    else if(test_cntAddr == 11'd47) data_time[3:0] = test_cnt[39:36];
-    else if(test_cntAddr == 11'd48) data_time[3:0] = test_cnt[35:32];
-    else if(test_cntAddr == 11'd49) data_time[3:0] = test_cnt[31:28];
-    else if(test_cntAddr == 11'd50) data_time[3:0] = test_cnt[27:24];
-    else if(test_cntAddr == 11'd51) data_time[3:0] = test_cnt[23:20];
-    else if(test_cntAddr == 11'd52) data_time[3:0] = test_cnt[19:16];
-    else if(test_cntAddr == 11'd53) data_time[3:0] = test_cnt[15:12];
-    else if(test_cntAddr == 11'd54) data_time[3:0] = test_cnt[11:8];
-    else if(test_cntAddr == 11'd55) data_time[3:0] = test_cnt[7:4];
-    else if(test_cntAddr == 11'd56) data_time[3:0] = test_cnt[3:0];
+         if(test_cntAddr == 11'd61) data_time[3:0] = test_cnt[63:60];
+    else if(test_cntAddr == 11'd62) data_time[3:0] = test_cnt[59:56];
+    else if(test_cntAddr == 11'd63) data_time[3:0] = test_cnt[55:52];
+    else if(test_cntAddr == 11'd64) data_time[3:0] = test_cnt[51:48];
+    else if(test_cntAddr == 11'd65) data_time[3:0] = test_cnt[47:44];
+    else if(test_cntAddr == 11'd66) data_time[3:0] = test_cnt[43:40];
+    else if(test_cntAddr == 11'd67) data_time[3:0] = test_cnt[39:36];
+    else if(test_cntAddr == 11'd68) data_time[3:0] = test_cnt[35:32];
+    else if(test_cntAddr == 11'd69) data_time[3:0] = test_cnt[31:28];
+    else if(test_cntAddr == 11'd70) data_time[3:0] = test_cnt[27:24];
+    else if(test_cntAddr == 11'd71) data_time[3:0] = test_cnt[23:20];
+    else if(test_cntAddr == 11'd72) data_time[3:0] = test_cnt[19:16];
+    else if(test_cntAddr == 11'd73) data_time[3:0] = test_cnt[15:12];
+    else if(test_cntAddr == 11'd74) data_time[3:0] = test_cnt[11:8];
+    else if(test_cntAddr == 11'd75) data_time[3:0] = test_cnt[7:4];
+    else if(test_cntAddr == 11'd76) data_time[3:0] = test_cnt[3:0];
     else                            data_time[3:0] = 4'b0000;
 end
 
@@ -264,14 +267,17 @@ assign GND = 1'b0;
 
 RAMB16_S9_S9 #(
 //                  6666555555555544444444443333333333222222222211111111110000000000
-      .INIT_00(256'h920de29292928ee0101010fe449292927c668A9292662242FE02027C8282827C),
+      .INIT_00(256'h920de29292928ee0101010fe449292927c668A9292660042FE02007C86BAC27C),
 //                  CCCCCCCCBBBBBBBBBBAAAAAAAAAA999999999988888888887777777777666666
       .INIT_01(256'h828282c6Fe9292926c7e9090907e609292927d6d9292926d808698a0C07d9292),
-//                                        --SPACE---FFFFFFFFFFEEEEEEEEEEDDDDDDDDDDCC
-      .INIT_02(256'h00000000000000000000000000000000Fe909090c0Fe929292c6FE8282827c7c),
-      .INIT_03(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_04(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_05(256'h0000000000000000000000000000000000000000000000000000000000000000),
+//                  JJIIIIIIIIIIHHHHHHHHHHGGGGGGGGGGFFFFFFFFFFEEEEEEEEEEDDDDDDDDDDCC
+      .INIT_02(256'h808282Fe8282Fe101010Fe7c829294deFe909090c0Fe929292c6FE8282827c7c),
+//                  PPPPPPOOOOOOOOOONNNNNNNNNNMMMMMMMMMMLLLLLLLLLLKKKKKKKKKKJJJJJJJJ
+      .INIT_03(256'h9090607C8282827CFe403804FeFe402040FeFe02020206Fe102844828482FC80),
+//                  VVVVVVVVVVUUUUUUUUUUTTTTTTTTTTSSSSSSSSSSRRRRRRRRRRQQQQQQQQQQPPPP
+      .INIT_04(256'hf8040204f8fC020202fCC080Fe80C0649292924c7e909894627C828A7C027C90),
+//                      !!!!!!!!!!--space---ZZZZZZZZZZYYYYYYYYYYXXXXXXXXXWWWWWWWWWWW
+      .INIT_05(256'h000000f6f600000000000000868aa2a2c2c0201e20c0c628102cC6Fe040804Fe),
       .INIT_06(256'h0000000000000000000000000000000000000000000000000000000000000000),
       .INIT_07(256'h0000000000000000000000000000000000000000000000000000000000000000),
       .INIT_08(256'h0000000000000000000000000000000000000000000000000000000000000000),
@@ -333,7 +339,7 @@ RAMB16_S9_S9 #(
 ) RAM_Character_Map (
     .DOA(),         .DOB(data_charMap),
     .DOPA(),        .DOPB(),
-    .ADDRA(11'b111),  .ADDRB(addr_charMap),
+    .ADDRA(),       .ADDRB(addr_charMap),
     .CLKA(GND),     .CLKB(MASTER_CLK),
     .DIA(8'b0),     .DIB(8'b0),
     .DIPA(GND),     .DIPB(GND),
@@ -344,33 +350,33 @@ RAMB16_S9_S9 #(
 
 
 RAMB16_S9_S9 #(
-      .INIT_00(256'h1010101010101010101010100F0E0D0C0B0A0908070605040302010010101010),
-      .INIT_01(256'h1010101010101010101010101010101010101010101010101010101010101010),
-      .INIT_02(256'h1010101010101010101010101010101010101010101010101010101010101010),
-      .INIT_03(256'h1010101010101010101010101010101010101010101010101010101010101010),
-      .INIT_04(256'h1010101010101010101010101010101010101010101010101010101010101010),
-      .INIT_05(256'h1010101010101010101010101010101010101010101010101010101010101010),
-      .INIT_06(256'h1010101010101010101010101010101010101010101010101010101010101010),
-      .INIT_07(256'h1010101010101010101010101010101010101010101010101010101010101010),
-      .INIT_08(256'h1010101010101010101010101010101010101010101010101010101010101010),
-      .INIT_09(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_0A(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_0B(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_0C(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_0D(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_0E(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_0F(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_10(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_11(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_12(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_13(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_14(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_15(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_16(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_17(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_18(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_19(256'h0000000000000000000000000000000000000000000000000000000000000000),
-      .INIT_1A(256'h0000000000000000000000000000000000000000000000000000000000000000),
+      .INIT_00(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_01(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_02(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_03(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_04(256'h201f1e1d1c1b1a191817161514131211100f0e0d0c0b0a090807060504030201),
+      .INIT_05(256'h2424242424242424242424242424242424242424242424242424242424232221),
+      .INIT_06(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_07(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_08(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_09(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_0A(256'h2424242424242424242424250e17121b0e111d0a14241e1822240e1f18152412),
+      .INIT_0B(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_0C(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_0D(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_0E(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_0F(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_10(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_11(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_12(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_13(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_14(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_15(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_16(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_17(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_18(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_19(256'h2424242424242424242424242424242424242424242424242424242424242424),
+      .INIT_1A(256'h2424242424242424242424242424242424242424242424242424242424242424),
       .INIT_1B(256'h0000000000000000000000000000000000000000000000000000000000000000),
       .INIT_1C(256'h0000000000000000000000000000000000000000000000000000000000000000),
       .INIT_1D(256'h0000000000000000000000000000000000000000000000000000000000000000),

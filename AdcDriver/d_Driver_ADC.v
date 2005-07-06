@@ -66,7 +66,7 @@ wire CLK_64MHZ, MASTER_RST;
 wire[5:0] TIME_BASE;
 wire[7:0] ADC_DATA;
 reg  ADC_CLK;
-wire [7:0] DATA_OUT;
+reg [7:0] DATA_OUT;
 
 //----------------------//
 // VARIABLES            //
@@ -179,7 +179,6 @@ end
 //------------------------------------------------------------------//
 // ADC DATA READING                                                 //
 //------------------------------------------------------------------//
-/*
 always @ (negedge ADC_CLK or posedge MASTER_RST) begin
     if(MASTER_RST == 1'b1) begin
         DATA_OUT <= 8'b0;
@@ -187,9 +186,8 @@ always @ (negedge ADC_CLK or posedge MASTER_RST) begin
         DATA_OUT <= ADC_DATA;
     end
 end
-*/
 
-assign DATA_OUT = ADC_DATA;
+//assign DATA_OUT = ADC_DATA;
 
 endmodule
 
