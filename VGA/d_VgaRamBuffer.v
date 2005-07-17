@@ -14,8 +14,7 @@ module VGADataBuffer(
     VGA_RAM_DATA, VGA_RAM_ADDR, VGA_RAM_OE, VGA_RAM_WE, VGA_RAM_CS,
     VGA_RAM_ACCESS_OK,
     ADC_RAM_DATA, ADC_RAM_ADDR, ADC_RAM_CLK,
-    TIME_BASE,
-    TRIG_ADDR, VGA_WRITE_DONE
+    TIME_BASE
     );
 //==================================================================//
 // VARIABLE DEFINITIONS                                             //
@@ -31,15 +30,11 @@ output[17:0] VGA_RAM_ADDR;
 output       VGA_RAM_OE, VGA_RAM_WE, VGA_RAM_CS;
 input        VGA_RAM_ACCESS_OK;
 
-input[7:0]   ADC_RAM_DATA;
+input[8:0]   ADC_RAM_DATA;
 output[10:0] ADC_RAM_ADDR;
 output       ADC_RAM_CLK;
 
 input[5:0] TIME_BASE;
-
-output      VGA_WRITE_DONE;
-input[10:0] TRIG_ADDR;
-
 
 //----------------------//
 // WIRES / NODES        //
@@ -50,12 +45,10 @@ wire[15:0] VGA_RAM_DATA;
 reg[17:0] VGA_RAM_ADDR;
 reg VGA_RAM_OE, VGA_RAM_WE, VGA_RAM_CS;
 wire  VGA_RAM_ACCESS_OK;
-wire[7:0] ADC_RAM_DATA;
+wire[8:0] ADC_RAM_DATA;
 reg[10:0] ADC_RAM_ADDR;
 wire ADC_RAM_CLK;
 wire[5:0] TIME_BASE;
-reg VGA_WRITE_DONE;
-wire[10:0] TRIG_ADDR;
 
 
 //----------------------//
@@ -99,22 +92,6 @@ always @ (posedge CLK_50MHZ or posedge MASTER_RST) begin
     end
 end
 
-/* VGA_WRITE_DONE -> BASED ON hcnt */
-always @ (hcnt) begin
-    if(hcnt == 10'd640)
-        VGA_WRITE_DONE = 1'b1;
-    else
-        VGA_WRITE_DONE = 1'b0;
-end
-
-/* TRIG_ADDR modified */
-always @ (TRIG_ADDR) begin
-    if(TRIG_ADDR < 10'd320)
-        TRIG_ADDR_buffered = (11'd2047 - 10'd320) - TRIG_ADDR;
-    else
-        TRIG_ADDR_buffered = TRIG_ADDR;
-end
-        
 
 always @ (posedge CLK_50MHZ or posedge MASTER_RST) begin
     if(MASTER_RST == 1'b1) begin
@@ -125,7 +102,7 @@ always @ (posedge CLK_50MHZ or posedge MASTER_RST) begin
         else
             ADC_RAM_ADDR <= ADC_RAM_ADDR + 1'b1;
     end else begin
-        ADC_RAM_ADDR <= TRIG_ADDR_buffered;
+        ADC_RAM_ADDR <= 11'd1727;
     end
 end
 
