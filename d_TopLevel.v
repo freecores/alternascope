@@ -34,7 +34,7 @@ module TopLevel(
     H_SYNC, V_SYNC, VGA_OUTPUT,
     PS2C, PS2D,
 //    TIME_BASE,
-    ADC_DATA, ADC_CLK,
+    ADC_DATA, CLK_ADC,
     VGA_RAM_ADDR, VGA_RAM_DATA,
     VGA_RAM_OE, VGA_RAM_WE, VGA_RAM_CS,
     
@@ -57,8 +57,8 @@ output H_SYNC, V_SYNC;
 output[2:0] VGA_OUTPUT;
 //input[5:0] TIME_BASE;
 inout PS2C, PS2D;
-input[7:0] ADC_DATA;
-output ADC_CLK;
+input[8:0] ADC_DATA;
+output CLK_ADC;
 output[17:0] VGA_RAM_ADDR;
 inout[15:0] VGA_RAM_DATA;
 output VGA_RAM_OE, VGA_RAM_WE, VGA_RAM_CS;
@@ -78,8 +78,8 @@ wire      H_SYNC, V_SYNC;
 wire[2:0] VGA_OUTPUT;
 wire[5:0] TIME_BASE;
 wire      PS2C, PS2D;
-wire[7:0] ADC_DATA;
-wire      ADC_CLK;
+wire[8:0] ADC_DATA;
+wire      CLK_ADC;
 wire[17:0] VGA_RAM_ADDR;
 wire[15:0] VGA_RAM_DATA;
 wire       VGA_RAM_OE, VGA_RAM_WE, VGA_RAM_CS;
@@ -94,6 +94,8 @@ assign TIME_BASE = 6'b0;
 //==================================================================//
 // TEMP                                                             //
 //==================================================================//
+reg[8:0] fake_adcData;
+
 wire[17:0] VGA_RAM_ADDRESS_w;
 wire[15:0] VGA_RAM_DATA_w;
 wire L_BUTTON, R_BUTTON, M_BUTTON;
@@ -109,7 +111,6 @@ reg[7:0] data_charRamRead_buf;
 wire[7:0] mask_charMap;
 reg[7:0] mask_charMap_buf;
 
-wire[1:0] sm_trig;
 
 always @ (posedge CLK_50MHZ) begin
     if(R_BUTTON) begin
@@ -123,24 +124,23 @@ end
 
 sub_SegDriver segs(
     .CLK_50MHZ(CLK_50MHZ), .MASTER_RST(MASTER_RST),
-    .DATA_IN(data_charRamRead_buf),
+    .DATA_IN(fake_adcData[7:0]),
     .SEG_OUT(SEG_OUT), .SEG_SEL(SEG_SEL)
     );
 
 wire[7:0] leds;
-assign leds[1:0] = sm_trig;
-assign leds[7:2] = 6'b0;
+assign leds[7:0] = 8'b0;
 
 /*- - - - - - - - - - - - - */
 /* Fake ADC data            */
 /*- - - - - - - - - - - - - */
-reg[7:0] fake_adcData;
-always @ (posedge CLK_VGA or posedge MASTER_RST) begin
+always @ (posedge CLK_ADC or posedge MASTER_RST) begin
     if(MASTER_RST)
-        fake_adcData <= 8'd0;
+        fake_adcData <= 9'd0;
     else
         fake_adcData <= fake_adcData+1;
 end
+
 
 
 //==================================================================//
@@ -187,23 +187,18 @@ Driver_MouseInput Driver_MouseInput_inst(
 
 
 
-wire[7:0] ADC_RAM_DATA;
+wire[8:0] ADC_RAM_DATA;
 wire[10:0] ADC_RAM_ADDR;
 wire ADC_RAM_CLK;
 wire[10:0] TRIG_ADDR;
 wire VGA_WRITE_DONE;
-ADCDataBuffer ram_ADC_databuffer(
-    .CLK_64MHZ(CLK_64MHZ), .MASTER_RST(MASTER_RST),
-    .CLK180_64MHZ(CLK180_64MHZ),
-    .TIME_BASE(TIME_BASE),
-    .RAM_ADDR(ADC_RAM_ADDR), .RAM_DATA(ADC_RAM_DATA), .RAM_CLK(ADC_RAM_CLK),
-//    .ADC_DATA(ADC_DATA), .ADC_CLK(ADC_CLK),
-    .ADC_DATA(fake_adcData), .ADC_CLK(ADC_CLK),
-    .TRIG_ADDR(TRIG_ADDR), .VGA_WRITE_DONE(VGA_WRITE_DONE),
-    .TRIGGER_LEVEL(TRIGGER_LEVEL[8:0]),
-    .sm_trig(sm_trig)
-    );
 
+ADCDataBuffer ADC_Data_Buffer(
+    .CLK_64MHZ(CLK_64MHZ),  .MASTER_CLK(MASTER_CLK), .MASTER_RST(MASTER_RST),
+    .TIME_BASE(TIME_BASE), .TRIGGER_LEVEL(TRIGGER_LEVEL[8:0]), .ADC_DATA(ADC_DATA[7:0]),
+    .CLK_ADC(CLK_ADC),
+    .SNAP_DATA_EXT(ADC_RAM_DATA), .SNAP_ADDR_EXT(ADC_RAM_ADDR), .SNAP_CLK_EXT(ADC_RAM_CLK)
+    );
 
 
 //------------------------------------------------------------------//
@@ -239,8 +234,7 @@ VGADataBuffer ram_VGA_ramwrite(
     .VGA_RAM_OE(VGA_RAM_OE_w), .VGA_RAM_WE(VGA_RAM_WE_w), .VGA_RAM_CS(VGA_RAM_CS_w),
     .VGA_RAM_ACCESS_OK(VGA_RAM_ACCESS_OK),
     .ADC_RAM_DATA(ADC_RAM_DATA), .ADC_RAM_ADDR(ADC_RAM_ADDR), .ADC_RAM_CLK(ADC_RAM_CLK),
-    .TIME_BASE(TIME_BASE),
-    .TRIG_ADDR(TRIG_ADDR), .VGA_WRITE_DONE(VGA_WRITE_DONE)
+    .TIME_BASE(TIME_BASE)
     );
 
 Driver_VGA driver_VGA(
