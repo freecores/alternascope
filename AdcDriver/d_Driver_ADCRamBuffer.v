@@ -29,10 +29,11 @@
 
 module ADCDataBuffer(
     CLK_64MHZ, MASTER_CLK, MASTER_RST,
-    TIME_BASE, TRIGGER_LEVEL, ADC_DATA,
+    TIMESCALE, TRIGGER_LEVEL, VERT_OFFSET, HORZ_OFFSET,
+    ADC_DATA,
     CLK_ADC,
     SNAP_DATA_EXT, SNAP_ADDR_EXT, SNAP_CLK_EXT,
-    sm_adc_ram, triggered
+    TRIGGERSTYLE
     );
     
 //==================================================================//
@@ -55,8 +56,8 @@ parameter ss_invalid        = 2'b10;
 input       CLK_64MHZ;
 input       MASTER_CLK;
 input       MASTER_RST;
-input[5:0]  TIME_BASE;
-input[8:0]  TRIGGER_LEVEL;
+input[3:0]  TIMESCALE;
+input[10:0]  TRIGGER_LEVEL, VERT_OFFSET, HORZ_OFFSET;
 input[8:0]  ADC_DATA;
 
 output      CLK_ADC;
@@ -65,19 +66,20 @@ output[8:0] SNAP_DATA_EXT;
 input[10:0] SNAP_ADDR_EXT;
 input       SNAP_CLK_EXT;
 
-output[1:0]sm_adc_ram;
-output triggered;
+input[1:0] TRIGGERSTYLE;
+
 //----------------------//
 // WIRES / NODES        //
 //----------------------//
 wire CLK_64MHZ, MASTER_CLK, MASTER_RST;
-wire[5:0]  TIME_BASE;
-wire[8:0]  TRIGGER_LEVEL;
+wire[3:0]  TIMESCALE;
+wire[10:0]  TRIGGER_LEVEL, VERT_OFFSET, HORZ_OFFSET;
 wire[8:0]  ADC_DATA;
 wire CLK_ADC;
 wire[8:0] SNAP_DATA_EXT;
 wire[10:0] SNAP_ADDR_EXT;
 wire SNAP_CLK_EXT;
+wire[1:0] TRIGGERSTYLE;
 
 
 //----------------------//
@@ -104,7 +106,7 @@ reg[10:0]   snap_addr, buf_adc_addr;
 Driver_ADC ADC(
     .CLK_64MHZ(CLK_64MHZ),
     .MASTER_RST(MASTER_RST),
-    .TIME_BASE(TIME_BASE),
+    .TIMESCALE(TIMESCALE),
     .CLK_ADC(CLK_ADC),
     .ADC_DATA(ADC_DATA),
     .DATA_OUT(data_from_adc)
@@ -122,6 +124,10 @@ wire VCC, GND;
 assign VCC = 1'b1;
 assign GND = 1'b0;
 
+// move the following into a more organized area
+wire[10:0] vert_adjustment;
+assign vert_adjustment = (VERT_OFFSET);
+
 RAMB16_S9_S9 ADC_QuasiFifo_Buffer(
     .DOA(),                     .DOB(buf_adc_data[7:0]),
     .DOPA(),                    .DOPB(buf_adc_data[8]),
@@ -135,15 +141,15 @@ RAMB16_S9_S9 ADC_QuasiFifo_Buffer(
     );
     
 RAMB16_S9_S9 ADC_Data_Snapshot(
-    .DOA(),                     .DOB(SNAP_DATA_EXT[7:0]),
-    .DOPA(),                    .DOPB(SNAP_DATA_EXT[8]),
-    .ADDRA(snap_addr),          .ADDRB(SNAP_ADDR_EXT),
-    .CLKA(CLK_ADC),             .CLKB(SNAP_CLK_EXT),
-    .DIA(buf_adc_data[7:0]),    .DIB(8'b0),
-    .DIPA(buf_adc_data[8]),     .DIPB(GND),
-    .ENA(VCC),                  .ENB(VCC),
-    .WEA(VCC),                  .WEB(GND),
-    .SSRA(GND),                 .SSRB(GND)
+    .DOA(),                                             .DOB(SNAP_DATA_EXT[7:0]),
+    .DOPA(),                                            .DOPB(SNAP_DATA_EXT[8]),
+    .ADDRA(snap_addr),                                  .ADDRB(SNAP_ADDR_EXT),
+    .CLKA(CLK_ADC),                                     .CLKB(SNAP_CLK_EXT),
+    .DIA(buf_adc_data[7:0]+vert_adjustment[7:0]),       .DIB(8'b0),   /* VERTICAL OFFSET */
+    .DIPA(buf_adc_data[8]+vert_adjustment[8]),          .DIPB(GND),   /* VERTICAL OFFSET */
+    .ENA(VCC),                                          .ENB(VCC),
+    .WEA(VCC),                                          .WEB(GND),
+    .SSRA(GND),                                         .SSRB(GND)
     );
 
 
@@ -160,7 +166,7 @@ always @ (posedge CLK_ADC or posedge MASTER_RST) begin
 //            sm_adc_ram <= ss_fifo_fill;
         if(sm_adc_ram == ss_fifo_fill && triggered)
             sm_adc_ram <= ss_fifo_half;
-        else if(sm_adc_ram == ss_fifo_half && (fifo_addr == trig_addr + 11'd1024))
+        else if(sm_adc_ram == ss_fifo_half && (fifo_addr == (trig_addr + 11'd1023)))
             sm_adc_ram <= ss_save_snapshot;
         else if(sm_adc_ram == ss_save_snapshot && snap_addr == 11'd2047)
             sm_adc_ram <= ss_fifo_fill;
@@ -193,7 +199,8 @@ always @ (posedge CLK_ADC or posedge MASTER_RST) begin
     if(MASTER_RST)
         triggered <= 1'b0;
     else
-        triggered <= (data_from_adc_buffered < TRIGGER_LEVEL && data_from_adc >= TRIGGER_LEVEL);
+        triggered <= (TRIGGERSTYLE == 2'b00) && (data_from_adc_buffered < TRIGGER_LEVEL && data_from_adc >= TRIGGER_LEVEL) || // >=
+                     (TRIGGERSTYLE == 2'b01) && (data_from_adc_buffered > TRIGGER_LEVEL && data_from_adc <= TRIGGER_LEVEL);   // <=
 end
 
 always @ (posedge triggered or posedge MASTER_RST) begin
@@ -214,7 +221,7 @@ always @ (posedge CLK_ADC or posedge MASTER_RST) begin
         snap_addr <= snap_addr + 1;
         buf_adc_addr <= buf_adc_addr + 1;
     end else begin
-        buf_adc_addr <= trig_addr;
+        buf_adc_addr <= trig_addr - (HORZ_OFFSET-11'd319);        /* HORIZONTAL OFFSET */
         snap_addr <= 11'b0;
     end
 end

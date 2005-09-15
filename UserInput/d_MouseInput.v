@@ -31,15 +31,20 @@
 module Driver_MouseInput(
     CLK_50MHZ, MASTER_RST,
     XCOORD, YCOORD, L_BUTTON, R_BUTTON, M_BUTTON,
-    TRIGGER_LEVEL
+    TRIGGER_LEVEL, VERT_OFFSET, HORZ_OFFSET,
+    TIMESCALE, TRIGGERSTYLE
     );
 
 
 //==================================================================//
 // PARAMETER DEFINITIONS                                            //
 //==================================================================//
-parameter P_trigger_clickLimit_left     = 10'd556;
-parameter P_trigger_clickLimit_right    = 10'd558;
+parameter P_clickLimit_left     = 10'd556;
+parameter P_clickLimit_right    = 10'd558;
+parameter P_clickLimit_leftV    = 10'd559;
+parameter P_clickLimit_rightV   = 10'd561;
+parameter P_clickLimit_top      = 10'd102;
+parameter P_clickLimit_bot      = 10'd100;
 
 
 //==================================================================//
@@ -56,6 +61,10 @@ input L_BUTTON;             // Left Mouse Button Press
 input R_BUTTON;             // Right Mouse Button Press
 input M_BUTTON;             // Middle Mouse Button Press
 output[9:0] TRIGGER_LEVEL;  // Current Trigger Level
+output[9:0] VERT_OFFSET;    // VERTICAL OFFSET
+output[9:0] HORZ_OFFSET;    // HORIZONTAL OFFSET
+output[3:0] TIMESCALE;      // Current Tiemscale value
+output[1:0] TRIGGERSTYLE;   // Style (rise/fall) of trigger
 
 //----------------------//
 // WIRES / NODES        //
@@ -64,7 +73,9 @@ wire CLK_50MHZ, MASTER_RST;
 wire[9:0] XCOORD;
 wire[9:0] YCOORD;
 wire L_BUTTON, R_BUTTON, M_BUTTON;
-wire[9:0] TRIGGER_LEVEL;
+wire[9:0] TRIGGER_LEVEL, VERT_OFFSET, HORZ_OFFSET;
+wire[3:0] TIMESCALE;
+wire[1:0] TRIGGERSTYLE;
 
 //----------------------//
 // REGISTERS            //
@@ -125,18 +136,71 @@ assign Mfall = ( Mbuf & !M_BUTTON);
 // USER MODIFIABLE LINES                                            //
 //------------------------------------------------------------------//
 sub_UserLines set_trigger(
-        .MASTER_CLK(CLK_50MHZ), .MASTER_RST(MASTER_RST),
-        .LINE_VALUE_OUT(TRIGGER_LEVEL),
-        .BUTTON_RISE(Lrise),
+    .MASTER_CLK(CLK_50MHZ), .MASTER_RST(MASTER_RST),
+    .LINE_VALUE_OUT(TRIGGER_LEVEL),
+    .BUTTON_RISE(Lrise),
 	.BUTTON_FALL(Lfall),
-        .XCOORD(XCOORD),
+    .XCOORD(XCOORD),
 	.YCOORD(YCOORD),
-        .LEFT(P_trigger_clickLimit_left),
-	.RGHT(P_trigger_clickLimit_right),
-	.BOT(TRIGGER_LEVEL-1'b1),
+    .RESET_VALUE(10'd99),
+    .LEFT(P_clickLimit_left),
+	.RGHT(P_clickLimit_right),
+    .BOT(TRIGGER_LEVEL),
+//    .BOT(TRIGGER_LEVEL-1'b1),
 	.TOP(TRIGGER_LEVEL+1'b1),
-        .SETXnY(1'b0)
-        );
+    .SETXnY(1'b0)
+    );
+    
+sub_UserLines set_Voffset(
+    .MASTER_CLK(CLK_50MHZ), .MASTER_RST(MASTER_RST),
+    .LINE_VALUE_OUT(VERT_OFFSET),
+    .BUTTON_RISE(Lrise),
+	.BUTTON_FALL(Lfall),
+    .XCOORD(XCOORD),
+	.YCOORD(YCOORD),
+    .RESET_VALUE(10'd0),
+    .LEFT(P_clickLimit_leftV),
+	.RGHT(P_clickLimit_rightV),
+    .BOT(VERT_OFFSET),
+//	  .BOT(VERT_OFFSET-1'b1),
+	.TOP(VERT_OFFSET+1'b1),
+    .SETXnY(1'b0)
+    );
+    
+sub_UserLines set_Hoffset(
+    .MASTER_CLK(CLK_50MHZ), .MASTER_RST(MASTER_RST),
+    .LINE_VALUE_OUT(HORZ_OFFSET),
+    .BUTTON_RISE(Lrise),
+	.BUTTON_FALL(Lfall),
+    .XCOORD(XCOORD),
+	.YCOORD(YCOORD),
+    .RESET_VALUE(10'd319),
+//    .LEFT(HORZ_OFFSET-1'b1),
+    .LEFT(HORZ_OFFSET),
+	.RGHT(HORZ_OFFSET+1'b1),
+	.BOT(P_clickLimit_bot),
+	.TOP(P_clickLimit_top),
+    .SETXnY(1'b1)
+    );
+    
+sub_UserTimeScaleBox TSBox(
+    .MASTER_CLK(CLK_50MHZ), .MASTER_RST(MASTER_RST),
+    .VALUE_OUT(TIMESCALE),
+    .BUTTON_RISE(Lrise),
+	.BUTTON_FALL(Lfall),
+    .XCOORD(XCOORD),
+	.YCOORD(YCOORD)
+    );
+    
+sub_UserTriggerStyleBox TrigStyleBox(
+    .MASTER_CLK(CLK_50MHZ), .MASTER_RST(MASTER_RST),
+    .VALUE_OUT(TRIGGERSTYLE),
+    .BUTTON_RISE(Lrise),
+	.BUTTON_FALL(Lfall),
+    .XCOORD(XCOORD),
+	.YCOORD(YCOORD)
+    );
+
 
 
 

@@ -31,7 +31,7 @@ module sub_UserLines(
     MASTER_CLK, MASTER_RST,
     LINE_VALUE_OUT,
     BUTTON_RISE, BUTTON_FALL,
-    XCOORD, YCOORD,
+    XCOORD, YCOORD, RESET_VALUE,
     LEFT, RGHT, BOT, TOP,
     SETXnY
 );
@@ -60,11 +60,13 @@ input BUTTON_FALL;      // Trigger has fallen
 
 output[9:0] LINE_VALUE_OUT;    // a 10 bit register to store the X or Y value
 
+input[9:0] RESET_VALUE; // Reset value
+
 //----------------------//
 //        NODES         //
 //----------------------//
 wire      MASTER_CLK, MASTER_RST;
-wire[9:0] XCOORD, YCOORD;
+wire[9:0] XCOORD, YCOORD, RESET_VALUE;
 wire[9:0] LEFT, RGHT, TOP, BOT;
 wire      SETXnY;
 wire      BUTTON_RISE, BUTTON_FALL;
@@ -99,13 +101,16 @@ always @ (posedge MASTER_CLK or posedge MASTER_RST) begin
         drag <= drag;
 end
 
-
+/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   Until this is figured out, it is bad to have the lines at 'zero'
+   (due to the comparison for 'in range')
+  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 always @ (posedge MASTER_CLK or posedge MASTER_RST) begin
     if(MASTER_RST)
-        LINE_VALUE_OUT <= 10'd200;
+        LINE_VALUE_OUT <= RESET_VALUE;
     else if(drag && SETXnY)
         LINE_VALUE_OUT <= XCOORD;
-    else if(drag && !SETXnY)
+    else if(drag && !SETXnY && (YCOORD<=10'd400))
         LINE_VALUE_OUT <= YCOORD;
     else
         LINE_VALUE_OUT <= LINE_VALUE_OUT;
