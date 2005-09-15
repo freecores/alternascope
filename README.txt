@@ -31,9 +31,9 @@ SC3S200FT256 chip. If you would like a programming file for a different target, 
 source files to compile, email me. If you would like a cheap development kit, go to www.Xilinx.com (about $100 bucks
 for this one).
 
-Eventually, I plan to make a couple of these (if there is interest) and sell them (at cost) to fellow keener students
-like myself. Being a 4th year Electrical Engineering student (at the University of Calgary, Alberta, Canada), I could
-have used this years ago - so hopefully it will be of aid to others.
+Eventually, I plan to make a couple of these (if there is interest) for fellow keener students like myself. Being a
+4th year Electrical Engineering student (at the University of Calgary, Alberta, Canada), I could have used this years
+ago - so hopefully it will be of aid to others.
 
 If you have any questions, concerns, or comments, please don't hesitate to email me at smpickett@opencores.org.
 

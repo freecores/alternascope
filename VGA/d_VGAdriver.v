@@ -39,6 +39,8 @@ module Driver_VGA(
     H_SYNC, V_SYNC, VGA_OUTPUT,
     XCOORD, YCOORD,
     TRIGGER_LEVEL,
+    VERT_OFFSET,
+    HORZ_OFFSET,
     SHOW_LEVELS,
     HCNT, VCNT,
     RGB_CHAR
@@ -70,7 +72,7 @@ input[15:0]  VGA_RAM_DATA;
 output[17:0] VGA_RAM_ADDR;
 output VGA_RAM_OE, VGA_RAM_WE, VGA_RAM_CS;
 output VGA_RAM_ACCESS_OK;
-input[8:0] TRIGGER_LEVEL;
+input[9:0] TRIGGER_LEVEL, HORZ_OFFSET, VERT_OFFSET;
 input SHOW_LEVELS;
 output[9:0] HCNT, VCNT;
 input[2:0] RGB_CHAR;
@@ -90,7 +92,7 @@ wire[15:0] VGA_RAM_DATA;
 reg[17:0]  VGA_RAM_ADDR;
 reg VGA_RAM_OE, VGA_RAM_WE, VGA_RAM_CS;
 reg VGA_RAM_ACCESS_OK;
-wire[8:0] TRIGGER_LEVEL;
+wire[9:0] TRIGGER_LEVEL, HORZ_OFFSET, VERT_OFFSET;
 wire SHOW_LEVELS;
 wire[9:0] HCNT, VCNT;
 wire[2:0] RGB_CHAR;
@@ -152,7 +154,7 @@ always @ (vcnt)
 //------------------------------------------------------------------//
 // VGA DATA SIGNAL TIMING                                           //
 //------------------------------------------------------------------//
-always @ (hcnt or vcnt or XCOORD or YCOORD or MASTER_RST or vga_out or SHOW_LEVELS or TRIGGER_LEVEL) begin
+always @ (hcnt or vcnt or XCOORD or YCOORD or MASTER_RST or vga_out or SHOW_LEVELS or TRIGGER_LEVEL or VERT_OFFSET or HORZ_OFFSET or RGB_CHAR) begin
     if(MASTER_RST == 1'b1) begin
         VGA_OUTPUT = P_black;
     //------------------------------------------------------------------------------//
@@ -174,6 +176,22 @@ always @ (hcnt or vcnt or XCOORD or YCOORD or MASTER_RST or vga_out or SHOW_LEVE
     end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL+1'b1) && hcnt >= 10'd556 && hcnt <= 10'd558) begin
         VGA_OUTPUT = P_yellow;
     end else if(SHOW_LEVELS == 1'b1 && vcnt == (TRIGGER_LEVEL-1'b1) && hcnt == 10'd557) begin
+        VGA_OUTPUT = P_yellow;
+    //------------------------------------------------------------------------------//
+    // VERTICAL OFFSET SPRITE         (shows as ------V------ )                     //
+    end else if(SHOW_LEVELS == 1'b1 && vcnt == (VERT_OFFSET) && hcnt != 10'd560) begin
+        VGA_OUTPUT = P_yellow;
+    end else if(SHOW_LEVELS == 1'b1 && vcnt == (VERT_OFFSET+1'b1) && (hcnt == 10'd559 || hcnt == 10'd561)) begin
+        VGA_OUTPUT = P_yellow;
+    end else if(SHOW_LEVELS == 1'b1 && vcnt == (VERT_OFFSET-1'b1) && hcnt == 10'd560) begin
+        VGA_OUTPUT = P_yellow;
+   //------------------------------------------------------------------------------//
+    // HORIZONTAL1 OFFSET SPRITE         (shows as ------H------ )                 //
+    end else if(SHOW_LEVELS == 1'b1 && hcnt == (HORZ_OFFSET) && vcnt != 10'd102 && vcnt != 10'd100) begin
+        VGA_OUTPUT = P_yellow;
+    end else if(SHOW_LEVELS == 1'b1 && hcnt == (HORZ_OFFSET+1'b1) && (vcnt == 10'd100 || vcnt == 10'd101 || vcnt == 10'd102)) begin
+        VGA_OUTPUT = P_yellow;
+    end else if(SHOW_LEVELS == 1'b1 && hcnt == (HORZ_OFFSET-1'b1) && (vcnt == 10'd100 || vcnt == 10'd101 || vcnt == 10'd102)) begin
         VGA_OUTPUT = P_yellow;
     //------------------------------------------------------------------------------//
     // TOP, BOTTOM, LEFT AND RIGHT GRID LINES                                       //

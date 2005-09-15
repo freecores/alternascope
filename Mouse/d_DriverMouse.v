@@ -1,14 +1,31 @@
-//==================================================================
-// File:    d_MouseDriver.v
-// Version: 0.01
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// Copyright Stephen Pickett
-//   April 28, 2005
-//------------------------------------------------------------------
-// Revisions:
-// Ver 0.01     Apr 28, 2005    Initial Release
-//
-//==================================================================
+//==================================================================//
+// File:    d_MouseDriver.v                                         //
+// Version: 0.0.0.1                                                 //
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -//
+// Copyright (C) Stephen Pickett                                    //
+//   Apr 28, 2005                                                   //
+//                                                                  //
+// This program is free software; you can redistribute it and/or    //
+// modify it under the terms of the GNU General Public License      //
+// as published by the Free Software Foundation; either version 2   //
+// of the License, or (at your option) any later version.           //
+//                                                                  //
+// This program is distributed in the hope that it will be useful,  //
+// but WITHOUT ANY WARRANTY; without even the implied warranty of   //
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the    //
+// GNU General Public License for more details.                     //
+//                                                                  //
+// If you have not received a copy of the GNU General Public License//
+// along with this program; write to:                               //
+//     Free Software Foundation, Inc.,                              //
+//     51 Franklin Street, Fifth Floor,                             //
+//     Boston, MA  02110-1301, USA.                                 //
+//                                                                  //
+//------------------------------------------------------------------//
+// Revisions:                                                       //
+// Ver 0.0.0.1     Apr 28, 2005   Under Development                 //
+//                                                                  //
+//==================================================================//
 
 module Driver_mouse(
     CLK_50MHZ, MASTER_RST,
@@ -91,7 +108,7 @@ reg       CLK_ps2c_debounced;
 // Debounce the PS2C line.
 //  The mouse is generally not outputting a nice rising clock edge.
 //  To eliminate the false edge detection, make sure it is high/low
-//  for at least 256 counts before triggering the CLK.
+//  for at least 256 counts (5.12us off 50MHz) before triggering the CLK.
 always @ (posedge CLK_50MHZ or posedge MASTER_RST) begin
     if(MASTER_RST == 1'b1) begin
         Counter_PS2C <= 8'b0;
@@ -159,7 +176,7 @@ always @ (posedge CLK_ps2c_debounced or posedge MASTER_RST) begin
             else
                 XCOORD <= XCOORD - xcoord_buf;
         end else begin  // POSITIVE
-            if((XCOORD + xcoord_buf) >= 11'd639)
+            if((XCOORD + xcoord_buf) >= 12'd639)
                 XCOORD <= 12'd639;
             else
                 XCOORD <= XCOORD + xcoord_buf;
@@ -174,13 +191,17 @@ always @ (posedge CLK_ps2c_debounced or posedge MASTER_RST) begin
         YCOORD <= 12'd199;
     end else if(Counter_bits == 6'd32 && (data_in_buf[8] == 1'b0)) begin
         if(data_in_buf[6] == 1'b0) begin
-            if((YCOORD + ycoord_buf) >= 11'd479)
-                YCOORD <= 12'd479;
+            if( (YCOORD < 12'd401) && ((YCOORD + ycoord_buf) >= 12'd401) )
+                YCOORD <= 12'd400;
+            else if( ((YCOORD >= 12'd441) /*&& (YCOORD <= 12'd520)*/) && ((YCOORD + ycoord_buf) > 12'd520) )
+                YCOORD <= (YCOORD + ycoord_buf) - 12'd521;
             else
                 YCOORD <= YCOORD + ycoord_buf;
         end else begin
-            if(YCOORD <= ycoord_buf)
-                YCOORD <= 12'd0;
+            if( /*(YCOORD < 12'd401) &&*/ (YCOORD < ycoord_buf) )
+                YCOORD <= 12'd521 - ycoord_buf;
+            else if( (YCOORD >= 12'd441) && ((YCOORD-12'd441) < ycoord_buf) )
+                YCOORD <= 12'd441;
             else
                 YCOORD <= YCOORD - ycoord_buf;
         end
